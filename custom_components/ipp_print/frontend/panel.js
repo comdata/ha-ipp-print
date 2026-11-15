@@ -107,7 +107,7 @@ const TEMPLATE = `
       </div>
       <div class="row">
         <label class="field-label">Seiten
-          <input id="pages" class="field" type="text" placeholder="alle · 1,3 · 1-3 · 1-2,4-5 · gerade">
+          <input id="pages" class="field" type="text" placeholder="alle · 1,3 · 1-3 · gerade">
         </label>
         <label class="field-label">Druck
           <select id="duplex" class="field">
