@@ -21,8 +21,6 @@ from .printer import async_print_document, async_printer_info
 
 _LOGGER = logging.getLogger(__name__)
 
-PANEL_FILE = Path(__file__).parent / "panel.js"
-
 
 def _data(hass: HomeAssistant) -> dict:
     return hass.data.setdefault(DOMAIN, {"sources": OrderedDict()})
@@ -34,21 +32,6 @@ def _sources(hass: HomeAssistant) -> OrderedDict:
 
 def _error(message: str, status: int = 400) -> web.Response:
     return web.json_response({"error": message}, status=status)
-
-
-class IppPrintPanelView(HomeAssistantView):
-    """Serve the panel's JS module."""
-
-    url = "/api/ipp_print/panel.js"
-    name = "api:ipp_print:panel"
-    requires_auth = True
-
-    async def get(self, request: web.Request) -> web.Response:
-        return web.Response(
-            body=PANEL_FILE.read_bytes(),
-            content_type="application/javascript",
-            headers={"Cache-Control": "no-cache"},
-        )
 
 
 class IppPrintInfoView(HomeAssistantView):

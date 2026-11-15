@@ -12,6 +12,7 @@ from pathlib import Path
 
 import voluptuous as vol
 from homeassistant.components import frontend, panel_custom
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
@@ -22,8 +23,11 @@ from . import views
 from .const import (
     DEFAULT_MEDIA,
     DOMAIN,
+    FRONTEND_DIR,
     PANEL_COMPONENT,
     PANEL_ICON,
+    PANEL_MODULE_FILE,
+    PANEL_MODULE_URL,
     PANEL_TITLE,
     PANEL_URL_PATH,
 )
@@ -76,13 +80,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def _async_register_frontend(hass: HomeAssistant) -> None:
     if hass.data[DOMAIN].get("panel_registered"):
         return
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(PANEL_MODULE_URL, str(FRONTEND_DIR), False)]
+    )
     await panel_custom.async_register_panel(
         hass,
         frontend_url_path=PANEL_URL_PATH,
         webcomponent_name=PANEL_COMPONENT,
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
-        module_url="/api/ipp_print/panel.js",
+        module_url=f"{PANEL_MODULE_URL}/{PANEL_MODULE_FILE}",
         config={},
         require_admin=True,
         embed_iframe=False,
@@ -94,7 +101,6 @@ def _async_register_views(hass: HomeAssistant) -> None:
     if hass.data[DOMAIN].get("views_registered"):
         return
     for view in (
-        views.IppPrintPanelView,
         views.IppPrintInfoView,
         views.IppPrintSourceView,
         views.IppPrintPreviewView,

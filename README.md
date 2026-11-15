@@ -63,6 +63,8 @@ Home-Assistant-Konfigurationsordner, z. B. `www/rechnung.pdf`.
 
 ## Grenzen
 
+* Getestet mit EPSON ET-2650 Series (`ipps://…:631/ipp/print`); der Drucker
+  nimmt kein PDF, deshalb der Umweg über JPEG.
 * Jede Seite ist ein eigener IPP-Job; bei mehreren Kopien sortiert der Drucker
   daher nicht seitenweise.
 * Duplex wird nicht angeboten, wenn der Drucker es nicht meldet (`sides-supported`).
