@@ -123,7 +123,10 @@ class IppPrintPreviewView(HomeAssistantView):
         if not source:
             return _error("Kein Dokument geladen.", 404)
 
-        page = max(0, int(query.get("page", 0)))
+        try:
+            page = max(0, int(query.get("page", 0)))
+        except ValueError:
+            return _error("Ungültige Seitenzahl.")
         color = query.get("color", "1") != "0"
         media = query.get("media") or _default_media(hass)
         landscape = query.get("landscape", "0") == "1"

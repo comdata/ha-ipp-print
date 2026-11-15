@@ -11,7 +11,7 @@ from collections import OrderedDict
 from pathlib import Path
 
 import voluptuous as vol
-from homeassistant.components import panel_custom
+from homeassistant.components import frontend, panel_custom
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
@@ -68,7 +68,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    await panel_custom.async_remove_panel(hass, PANEL_URL_PATH)
+    frontend.async_remove_panel(hass, PANEL_URL_PATH)
     hass.data.pop(DOMAIN, None)
     return True
 
@@ -122,7 +122,10 @@ def _async_register_services(hass: HomeAssistant) -> None:
                 response.raise_for_status()
                 document = await response.read()
         elif file_path:
-            path = Path(hass.config.path()) / file_path
+            base = Path(hass.config.path()).resolve()
+            path = (base / file_path).resolve()
+            if not path.is_relative_to(base):
+                raise ValueError("file_path muss im Konfigurationsordner liegen")
             document = await hass.async_add_executor_job(path.read_bytes)
             name = path.name
         else:
