@@ -1,0 +1,28 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Drucker einrichten",
+        "description": "Pfad und Papier werden über IPP abgefragt. Die Adresse des Druckers findest du im Router oder in der bestehenden IPP-Integration.",
+        "data": {
+          "host": "IP-Adresse oder Hostname",
+          "port": "Port",
+          "path": "IPP-Pfad",
+          "secure": "HTTPS (ipps)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Der Drucker antwortet nicht auf dieser IPP-Adresse."
+    },
+    "abort": {
+      "already_configured": "Dieser Drucker ist bereits eingerichtet."
+    }
+  },
+  "services": {
+    "print": {
+      "name": "Dokument drucken",
+      "description": "Druckt ein PDF, JPG oder PNG über IPP."
+    }
+  }
+}

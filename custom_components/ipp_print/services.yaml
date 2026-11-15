@@ -1,0 +1,44 @@
+print:
+  name: Dokument drucken
+  description: >-
+    Druckt ein PDF, JPG oder PNG über IPP. Entweder eine Datei aus dem
+    Home-Assistant-Konfigurationsordner (file_path) oder eine URL angeben.
+  fields:
+    url:
+      name: URL
+      description: Adresse des Dokuments (http/https).
+      example: "https://example.org/rechnung.pdf"
+      selector:
+        text:
+          type: url
+    file_path:
+      name: Dateipfad
+      description: Pfad relativ zum Home-Assistant-Konfigurationsordner.
+      example: "www/rechnung.pdf"
+      selector:
+        text:
+    media:
+      name: Papier
+      description: PWG-Papierschlüssel, z. B. iso_a4_210x297mm.
+      default: iso_a4_210x297mm
+      selector:
+        text:
+    landscape:
+      name: Querformat
+      default: false
+      selector:
+        boolean:
+    mode:
+      name: Anpassen
+      description: fit = ganzes Dokument sichtbar, fill = Seite ausfüllen und beschneiden.
+      default: fit
+      selector:
+        select:
+          options:
+            - fit
+            - fill
+    color:
+      name: Farbe
+      default: true
+      selector:
+        boolean:

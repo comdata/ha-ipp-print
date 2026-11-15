@@ -1,0 +1,28 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up printer",
+        "description": "Path and paper sizes are read over IPP. The printer's address is shown in your router or in the existing IPP integration.",
+        "data": {
+          "host": "IP address or hostname",
+          "port": "Port",
+          "path": "IPP path",
+          "secure": "HTTPS (ipps)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "The printer does not answer on this IPP address."
+    },
+    "abort": {
+      "already_configured": "This printer is already set up."
+    }
+  },
+  "services": {
+    "print": {
+      "name": "Print document",
+      "description": "Prints a PDF, JPG or PNG over IPP."
+    }
+  }
+}

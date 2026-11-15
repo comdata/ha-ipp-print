@@ -1,0 +1,12 @@
+{
+  "domain": "ipp_print",
+  "name": "IPP Print",
+  "codeowners": ["@comdata"],
+  "config_flow": true,
+  "dependencies": ["http", "frontend", "panel_custom"],
+  "documentation": "https://github.com/comdata/ha-ipp-print",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/comdata/ha-ipp-print/issues",
+  "requirements": ["pypdfium2==5.15.2"],
+  "version": "0.1.0"
+}
