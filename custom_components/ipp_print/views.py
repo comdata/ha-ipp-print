@@ -138,6 +138,29 @@ class IppPrintPreviewView(HomeAssistantView):
         )
 
 
+class IppPrintPagesView(HomeAssistantView):
+    """Resolve a page selection like "1-3, 5, gerade" against the loaded document."""
+
+    url = "/api/ipp_print/pages"
+    name = "api:ipp_print:pages"
+    requires_auth = True
+
+    async def get(self, request: web.Request) -> web.Response:
+        hass = request.app["hass"]
+        source = _sources(hass).get(request.query.get("id", ""))
+        if not source:
+            return _error("Kein Dokument geladen.", 404)
+        try:
+            selection = await hass.async_add_executor_job(
+                render.parse_pages, request.query.get("pages"), source["pages"]
+            )
+        except ValueError as err:
+            return web.json_response({"error": str(err)}, status=422)
+        return web.json_response(
+            {"pages": [page + 1 for page in selection], "count": len(selection)}
+        )
+
+
 class IppPrintPrintView(HomeAssistantView):
     """Print a loaded document."""
 
@@ -168,6 +191,8 @@ class IppPrintPrintView(HomeAssistantView):
                 landscape=bool(payload.get("landscape")),
                 mode="fill" if payload.get("mode") == "fill" else "fit",
                 color=payload.get("color", True) is not False,
+                pages=payload.get("pages"),
+                reverse=bool(payload.get("reverse")),
             )
         except Exception as err:  # noqa: BLE001 - printer answered with an error
             _LOGGER.exception("Print job failed")

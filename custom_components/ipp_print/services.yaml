@@ -42,3 +42,17 @@ print:
       default: true
       selector:
         boolean:
+    pages:
+      name: Seiten
+      description: >-
+        Seitenauswahl wie "1,3", "1-3", "1-2, 4-5", "gerade" oder "ungerade".
+        Leer = alle Seiten. Für beidseitig: erst "ungerade", dann "gerade" mit reverse.
+      default: ""
+      selector:
+        text:
+    reverse:
+      name: Umgekehrte Reihenfolge
+      description: Druckt die Auswahl von hinten nach vorn (für Rückseiten beim beidseitigen Druck).
+      default: false
+      selector:
+        boolean:

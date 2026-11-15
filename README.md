@@ -43,6 +43,11 @@ In der Seitenleiste **Drucken** öffnen:
 * Datei hineinziehen/auswählen **oder** eine URL eintragen und *Laden*.
 * **Papier** (A4 voreingestellt, weitere Formate kommen vom Drucker),
   **Ausrichtung**, **Anpassen** (einpassen oder ausfüllen/beschneiden), **Farbe**.
+* **Seiten**: leer = alle, sonst `1,3`, `1-3`, `1-2, 4-5`, `gerade`, `ungerade`.
+  Unter dem Feld steht, was tatsächlich gedruckt wird.
+* **Druck**: *Einseitig* oder *Beidseitig (manuell)*. Beim beidseitigen Druck
+  kommen erst die Vorderseiten; danach Blätter umdrehen, einlegen und
+  *Rückseiten drucken* – die Rückseiten laufen umgekehrt, damit der Stapel passt.
 * Die Vorschau zeigt die gerenderte Seite, Blättern für mehrseitige PDFs.
 * *Drucken* schickt eine Seite pro Druckjob an den Drucker.
 
@@ -56,10 +61,26 @@ data:
   landscape: false
   mode: fit
   color: true
+  pages: "1-3"
 ```
 
 Statt `url` geht auch `file_path` – ein Pfad relativ zum
 Home-Assistant-Konfigurationsordner, z. B. `www/rechnung.pdf`.
+
+Beidseitig per Automation (zwei Aufrufe, dazwischen Papier wenden):
+
+```yaml
+action: ipp_print.print
+data:
+  file_path: www/dokument.pdf
+  pages: ungerade
+# … warten, Papier umdrehen …
+action: ipp_print.print
+data:
+  file_path: www/dokument.pdf
+  pages: gerade
+  reverse: true
+```
 
 ## Grenzen
 

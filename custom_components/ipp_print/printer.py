@@ -43,18 +43,28 @@ async def async_print_document(
     landscape: bool = False,
     mode: str = "fit",
     color: bool = True,
+    pages: str | None = None,
+    reverse: bool = False,
 ) -> list[int | None]:
-    """Render the document and send one print job per page."""
-    pages = await hass.async_add_executor_job(
-        render.render_pages, data, media, landscape, mode, PRINT_DPI
+    """Render the chosen pages and send one print job per page."""
+    total = await hass.async_add_executor_job(render.page_count, data)
+    selection = await hass.async_add_executor_job(render.parse_pages, pages, total)
+    if reverse:
+        selection = list(reversed(selection))
+    rendered = await hass.async_add_executor_job(
+        lambda: [render.render_pages(data, media, landscape, mode, PRINT_DPI, [page])[0]
+                 for page in selection]
     )
     session = _session(hass)
     job_ids: list[int | None] = []
-    for index, page in enumerate(pages, start=1):
+    for page, image in zip(selection, rendered, strict=True):
         job_ids.append(
             await ipp.print_job(
-                session, config, page, media=media, name=f"{name} ({index})", color=color
+                session, config, image, media=media, name=f"{name} (S.{page + 1})", color=color
             )
         )
-    _LOGGER.debug("Sent %s page(s) to %s: %s", len(pages), config.get("host"), job_ids)
+    _LOGGER.debug(
+        "Sent %s page(s) %s of %s to %s",
+        len(selection), [page + 1 for page in selection], total, config.get("host"),
+    )
     return job_ids

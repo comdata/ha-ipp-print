@@ -75,6 +75,59 @@ def page_count(data: bytes) -> int:
         document.close()
 
 
+EVEN_WORDS = {"gerade", "even"}
+ODD_WORDS = {"ungerade", "odd"}
+ALL_WORDS = {"", "alle", "all"}
+
+
+def parse_pages(selection: str | None, total: int) -> list[int]:
+    """Turn "1, 3-5, gerade" into 0-based page indexes.
+
+    Accepted: empty/`alle`, single pages, ranges, and the words `gerade`/`ungerade`,
+    separated by commas or spaces. Raises ValueError for nonsense or pages the
+    document does not have.
+    """
+    text = (selection or "").strip().lower()
+    if text in ALL_WORDS:
+        return list(range(total))
+
+    pages: set[int] = set()
+    for token in text.replace(";", ",").replace(" ", ",").split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if token in ALL_WORDS:
+            return list(range(total))
+        if token in EVEN_WORDS:
+            pages.update(range(1, total, 2))
+        elif token in ODD_WORDS:
+            pages.update(range(0, total, 2))
+        elif "-" in token:
+            start, _, end = token.partition("-")
+            first, last = _page_number(start, total), _page_number(end, total)
+            if first > last:
+                raise ValueError(f"„{token}“ ist verdreht – erst die kleinere Seite.")
+            pages.update(range(first - 1, last))
+        else:
+            pages.add(_page_number(token, total) - 1)
+
+    if not pages:
+        raise ValueError("Keine Seite ausgewählt.")
+    return sorted(pages)
+
+
+def _page_number(text: str, total: int) -> int:
+    try:
+        number = int(text)
+    except ValueError as err:
+        raise ValueError(f"„{text}“ ist keine Seitenzahl.") from err
+    if number < 1:
+        raise ValueError("Seiten zählen ab 1.")
+    if number > total:
+        raise ValueError(f"Seite {number} gibt es nicht – das Dokument hat {total}.")
+    return number
+
+
 def render_pages(
     data: bytes,
     media: str,

@@ -67,6 +67,7 @@ const STYLE = `
     content: "Vorschau"; color: #bbb; font-size: .9rem;
   }
   .pager { display: flex; align-items: center; gap: 12px; }
+  .pages-info { margin: -6px 0 0; min-height: 1.1em; }
   .error { color: var(--error-color, #db4437); }
 `;
 
@@ -104,8 +105,21 @@ const TEMPLATE = `
         </label>
         <label class="switch"><input id="color" type="checkbox" checked> Farbe</label>
       </div>
+      <div class="row">
+        <label class="field-label">Seiten
+          <input id="pages" class="field" type="text" placeholder="alle · 1,3 · 1-3 · 1-2,4-5 · gerade">
+        </label>
+        <label class="field-label">Druck
+          <select id="duplex" class="field">
+            <option value="off">Einseitig</option>
+            <option value="manual">Beidseitig (manuell)</option>
+          </select>
+        </label>
+      </div>
+      <p id="pageInfo" class="muted pages-info"></p>
       <div class="row actions">
         <button id="print" class="btn primary" disabled>Drucken</button>
+        <button id="reset" class="btn" hidden>Zurücksetzen</button>
         <span id="status" class="muted"></span>
       </div>
     </section>
@@ -132,6 +146,7 @@ class IppPrintPanel extends HTMLElement {
       drop: $("drop"), file: $("file"), dropTitle: $("dropTitle"),
       url: $("url"), load: $("load"), media: $("media"), orient: $("orient"),
       mode: $("mode"), color: $("color"), print: $("print"),
+      pages: $("pages"), duplex: $("duplex"), pageInfo: $("pageInfo"), reset: $("reset"),
       status: $("status"), printer: $("printer"), sheet: $("sheet"),
       preview: $("preview"), prev: $("prev"), next: $("next"), pageno: $("pageno"),
     };
@@ -139,6 +154,8 @@ class IppPrintPanel extends HTMLElement {
     this._page = 0;
     this._previewUrl = null;
     this._info = null;
+    this._selection = null;
+    this._duplexStage = null;
     this._wire();
   }
 
@@ -181,6 +198,20 @@ class IppPrintPanel extends HTMLElement {
     e.prev.addEventListener("click", () => this._go(-1));
     e.next.addEventListener("click", () => this._go(1));
     e.print.addEventListener("click", () => this._print());
+    e.reset.addEventListener("click", () => {
+      this._resetDuplex();
+      this._updateSelection();
+      this._setStatus("");
+    });
+    e.pages.addEventListener("input", () => {
+      this._resetDuplex();
+      clearTimeout(this._selectionTimer);
+      this._selectionTimer = setTimeout(() => this._updateSelection(), 250);
+    });
+    e.duplex.addEventListener("change", () => {
+      this._resetDuplex();
+      this._updateSelection();
+    });
   }
 
   async _fetch(path, init) {
@@ -293,12 +324,49 @@ class IppPrintPanel extends HTMLElement {
   _useSource(source) {
     this._source = source;
     this._page = 0;
+    this._resetDuplex();
     this._els.dropTitle.textContent = source.name;
     this._els.drop.classList.add("filled");
     this._els.print.disabled = false;
     this._setStatus(`${source.pages} Seite${source.pages === 1 ? "" : "n"}`);
     this._updatePager();
     this._loadPreview();
+    this._updateSelection();
+  }
+
+  _resetDuplex() {
+    this._duplexStage = null;
+    this._els.print.textContent = "Drucken";
+    this._els.reset.hidden = true;
+  }
+
+  async _updateSelection() {
+    const e = this._els;
+    if (!this._source) {
+      e.pageInfo.textContent = "";
+      return;
+    }
+    const duplex = e.duplex.value === "manual";
+    const query = new URLSearchParams({
+      id: this._source.id,
+      pages: duplex ? "ungerade" : e.pages.value.trim(),
+    });
+    try {
+      const response = await this._fetch(`/api/ipp_print/pages?${query}`);
+      const result = await response.json();
+      const shown = result.pages.length > 12
+        ? `${result.pages.slice(0, 12).join(", ")} …`
+        : result.pages.join(", ");
+      e.pageInfo.classList.remove("error");
+      e.pageInfo.textContent = duplex
+        ? `Beidseitig: ${result.count} Blatt, erst Vorderseiten (${shown}), dann Rückseiten`
+        : `Druckt ${result.count} Seite${result.count === 1 ? "" : "n"}: ${shown}`;
+      e.print.disabled = false;
+    } catch (err) {
+      e.pageInfo.classList.add("error");
+      e.pageInfo.textContent = err.message;
+      e.print.disabled = true;
+    }
   }
 
   _go(delta) {
@@ -355,21 +423,46 @@ class IppPrintPanel extends HTMLElement {
 
   async _print() {
     if (!this._source) return;
+    const e = this._els;
     const opts = this._options();
-    this._els.print.disabled = true;
+    const duplex = e.duplex.value === "manual";
+    let pages = e.pages.value.trim();
+    let reverse = false;
+    if (duplex) {
+      if (this._duplexStage === "back") {
+        pages = "gerade";
+        reverse = true;
+      } else {
+        pages = "ungerade";
+      }
+    }
+    e.print.disabled = true;
     this._setStatus("Wird gedruckt …");
     try {
       const response = await this._fetch("/api/ipp_print/print", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: this._source.id, ...opts }),
+        body: JSON.stringify({ id: this._source.id, ...opts, pages, reverse }),
       });
       const result = await response.json();
-      this._setStatus(`An Drucker gesendet (${result.pages} Seite${result.pages === 1 ? "" : "n"}).`);
+      if (duplex && this._duplexStage !== "back") {
+        this._duplexStage = "back";
+        e.print.textContent = "Rückseiten drucken";
+        e.reset.hidden = false;
+        this._setStatus(
+          `${result.pages} Vorderseite(n) gedruckt. Blätter umdrehen, wieder einlegen, dann „Rückseiten drucken“.`,
+        );
+      } else if (duplex) {
+        this._resetDuplex();
+        this._setStatus(`Beidseitig fertig – ${result.pages} Rückseite(n) gedruckt.`);
+        this._updateSelection();
+      } else {
+        this._setStatus(`An Drucker gesendet (${result.pages} Seite(n)).`);
+      }
     } catch (err) {
       this._setStatus(err.message, true);
     } finally {
-      this._els.print.disabled = false;
+      e.print.disabled = false;
     }
   }
 }

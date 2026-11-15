@@ -57,6 +57,30 @@ def test_media_options_put_a4_first_and_filter() -> None:
     assert [option["label"] for option in filtered] == ["A4", "Letter"]
 
 
+
+
+def test_parse_pages_selection() -> None:
+    assert render.parse_pages("", 5) == [0, 1, 2, 3, 4]
+    assert render.parse_pages("alle", 5) == [0, 1, 2, 3, 4]
+    assert render.parse_pages("1", 5) == [0]
+    assert render.parse_pages("1,3", 5) == [0, 2]
+    assert render.parse_pages("1-3", 5) == [0, 1, 2]
+    assert render.parse_pages("1-2, 4-5", 6) == [0, 1, 3, 4]
+    assert render.parse_pages("gerade", 6) == [1, 3, 5]
+    assert render.parse_pages("ungerade", 6) == [0, 2, 4]
+    assert render.parse_pages("even", 5) == [1, 3]
+    assert render.parse_pages("3, 1", 5) == [0, 2]
+
+
+def test_parse_pages_rejects_nonsense() -> None:
+    for bad in ("0", "7", "3-1", "abc", "x-y"):
+        try:
+            render.parse_pages(bad, 5)
+        except ValueError:
+            continue
+        raise AssertionError(f"{bad!r} sollte abgelehnt werden")
+
+
 if __name__ == "__main__":
     for name, func in sorted(globals().items()):
         if name.startswith("test_") and callable(func):

@@ -46,6 +46,8 @@ PRINT_SCHEMA = vol.Schema(
         vol.Optional("landscape", default=False): cv.boolean,
         vol.Optional("mode", default="fit"): vol.In(["fit", "fill"]),
         vol.Optional("color", default=True): cv.boolean,
+        vol.Optional("pages", default=""): cv.string,
+        vol.Optional("reverse", default=False): cv.boolean,
     }
 )
 
@@ -104,6 +106,7 @@ def _async_register_views(hass: HomeAssistant) -> None:
         views.IppPrintInfoView,
         views.IppPrintSourceView,
         views.IppPrintPreviewView,
+        views.IppPrintPagesView,
         views.IppPrintPrintView,
     ):
         hass.http.register_view(view())
@@ -145,6 +148,8 @@ def _async_register_services(hass: HomeAssistant) -> None:
             landscape=call.data["landscape"],
             mode=call.data["mode"],
             color=call.data["color"],
+            pages=call.data["pages"],
+            reverse=call.data["reverse"],
         )
 
     hass.services.async_register(
