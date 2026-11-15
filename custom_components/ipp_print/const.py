@@ -4,7 +4,7 @@ from pathlib import Path
 
 DOMAIN = "ipp_print"
 NAME = "IPP Print"
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 
 DEFAULT_PORT = 631
 DEFAULT_PATH = "/ipp/print"

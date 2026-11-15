@@ -151,7 +151,8 @@ class IppPrintPanel extends HTMLElement {
       preview: $("preview"), prev: $("prev"), next: $("next"), pageno: $("pageno"),
     };
     this._source = null;
-    this._page = 0;
+    this._selIndex = 0;
+    this._selectedPages = null;
     this._previewUrl = null;
     this._info = null;
     this._selection = null;
@@ -323,12 +324,13 @@ class IppPrintPanel extends HTMLElement {
 
   _useSource(source) {
     this._source = source;
-    this._page = 0;
+    this._selIndex = 0;
+    this._selectedPages = null;
     this._resetDuplex();
     this._els.dropTitle.textContent = source.name;
     this._els.drop.classList.add("filled");
     this._els.print.disabled = false;
-    this._setStatus(`${source.pages} Seite${source.pages === 1 ? "" : "n"}`);
+    this._setStatus(`Dokument: ${source.pages} Seite${source.pages === 1 ? "" : "n"}`);
     this._updatePager();
     this._loadPreview();
     this._updateSelection();
@@ -354,15 +356,24 @@ class IppPrintPanel extends HTMLElement {
     try {
       const response = await this._fetch(`/api/ipp_print/pages?${query}`);
       const result = await response.json();
+      this._selectedPages = result.pages;
+      if (this._selIndex >= result.pages.length) this._selIndex = 0;
       const shown = result.pages.length > 12
         ? `${result.pages.slice(0, 12).join(", ")} …`
         : result.pages.join(", ");
       e.pageInfo.classList.remove("error");
-      e.pageInfo.textContent = duplex
-        ? `Beidseitig: ${result.count} Blatt, erst Vorderseiten (${shown}), dann Rückseiten`
-        : `Druckt ${result.count} Seite${result.count === 1 ? "" : "n"}: ${shown}`;
+      if (!duplex) {
+        e.pageInfo.textContent = `Druckt ${result.count} Seite${result.count === 1 ? "" : "n"}: ${shown}`;
+      } else if (this._duplexStage === "back") {
+        e.pageInfo.textContent = `Rückseiten: ${result.count} Blatt (${shown})`;
+      } else {
+        e.pageInfo.textContent = `Beidseitig: ${result.count} Blatt – erst Vorderseiten (${shown}), dann Rückseiten`;
+      }
       e.print.disabled = false;
+      this._updatePager();
+      this._loadPreview();
     } catch (err) {
+      this._selectedPages = null;
       e.pageInfo.classList.add("error");
       e.pageInfo.textContent = err.message;
       e.print.disabled = true;
@@ -371,11 +382,24 @@ class IppPrintPanel extends HTMLElement {
 
   _go(delta) {
     if (!this._source) return;
-    const next = this._page + delta;
-    if (next < 0 || next >= this._source.pages) return;
-    this._page = next;
+    const next = this._selIndex + delta;
+    if (next < 0 || next >= this._pageList().length) return;
+    this._selIndex = next;
     this._updatePager();
     this._loadPreview();
+  }
+
+  /** The pages the preview pages through: the selection, or every page. */
+  _pageList() {
+    if (this._selectedPages && this._selectedPages.length) return this._selectedPages;
+    const total = this._source ? this._source.pages : 0;
+    return Array.from({ length: total }, (_, index) => index + 1);
+  }
+
+  _currentPage() {
+    const list = this._pageList();
+    if (!list.length) return 0;
+    return list[Math.min(this._selIndex, list.length - 1)] - 1;
   }
 
   _updatePager() {
@@ -386,9 +410,14 @@ class IppPrintPanel extends HTMLElement {
       e.next.disabled = true;
       return;
     }
-    e.pageno.textContent = `Seite ${this._page + 1} von ${this._source.pages}`;
-    e.prev.disabled = this._page <= 0;
-    e.next.disabled = this._page >= this._source.pages - 1;
+    const list = this._pageList();
+    const page = list[Math.min(this._selIndex, list.length - 1)];
+    const filtered = list.length !== this._source.pages;
+    e.pageno.textContent = filtered
+      ? `Seite ${page} · ${this._selIndex + 1} von ${list.length} gewählt`
+      : `Seite ${page} von ${this._source.pages}`;
+    e.prev.disabled = this._selIndex <= 0;
+    e.next.disabled = this._selIndex >= list.length - 1;
   }
 
   _schedulePreview() {
@@ -402,7 +431,7 @@ class IppPrintPanel extends HTMLElement {
     const opts = this._options();
     const query = new URLSearchParams({
       id: this._source.id,
-      page: String(this._page),
+      page: String(this._currentPage()),
       media: opts.media,
       landscape: opts.landscape ? "1" : "0",
       mode: opts.mode,
@@ -447,6 +476,8 @@ class IppPrintPanel extends HTMLElement {
       const result = await response.json();
       if (duplex && this._duplexStage !== "back") {
         this._duplexStage = "back";
+        this._selIndex = 0;
+        this._updateSelection();
         e.print.textContent = "Rückseiten drucken";
         e.reset.hidden = false;
         this._setStatus(
